@@ -1,0 +1,22 @@
+# Dados de sequenciacao
+data/raw/
+data/cleaned/
+data/reference/
+
+# Resultados gerados
+results/
+logs/
+deliverables/
+resultados.tsv
+
+# Containers e ambientes
+*.sif
+.snakemake/
+.conda/
+.venv/
+
+# Ficheiros temporarios
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
