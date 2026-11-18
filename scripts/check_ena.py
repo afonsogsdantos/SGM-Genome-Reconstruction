@@ -4,43 +4,61 @@ import json
 from urllib.request import urlopen
 from urllib.parse import urlencode
 
-# Identificadores dos dados de sequenciacao
 ACCESSIONS = ["SRR13745244", "SRR13745250"]
 
-# API do European Nucleotide Archive
 BASE_URL = "https://www.ebi.ac.uk/ena/portal/api/filereport"
 
 for accession in ACCESSIONS:
 
-    # Parametros da consulta
     params = urlencode({
         "accession": accession,
         "result": "read_run",
-        "fields": "run_accession,library_strategy,library_layout,instrument_platform,fastq_ftp",
+        "fields": (
+            "run_accession,library_layout,"
+            "instrument_platform,fastq_ftp,"
+            "fastq_md5,fastq_bytes"
+        ),
         "format": "json"
     })
 
     url = f"{BASE_URL}?{params}"
 
-    print(f"\nChecking {accession}...")
+    print(f"\n{'=' * 50}")
+    print(f"Checking {accession}")
+    print("=" * 50)
 
-    # Consultar a API
     with urlopen(url, timeout=60) as response:
         records = json.load(response)
 
-    # Verificar se existem resultados
-    if not records:
+    if len(records) != 1:
         raise RuntimeError(
-            f"No ENA records found for {accession}"
+            f"Expected one ENA record for {accession}, "
+            f"found {len(records)}"
         )
 
     record = records[0]
 
-    # Mostrar informacoes
     print("Platform:", record.get("instrument_platform"))
     print("Layout:", record.get("library_layout"))
-    print("FASTQ files:")
 
-    for filepath in record.get("fastq_ftp", "").split(";"):
-        if filepath:
-            print(" -", filepath)
+    files = record.get("fastq_ftp", "").split(";")
+    md5s = record.get("fastq_md5", "").split(";")
+    sizes = record.get("fastq_bytes", "").split(";")
+
+    if not files or not files[0]:
+        raise RuntimeError(
+            f"No FASTQ files available for {accession}"
+        )
+
+    if not (len(files) == len(md5s) == len(sizes)):
+        raise RuntimeError(
+            f"Inconsistent FASTQ metadata for {accession}"
+        )
+
+    for i, (filepath, md5, size) in enumerate(
+        zip(files, md5s, sizes), start=1
+    ):
+        print(f"\nFile {i}:")
+        print("URL:", "https://" + filepath)
+        print("Size (bytes):", size)
+        print("MD5:", md5)
