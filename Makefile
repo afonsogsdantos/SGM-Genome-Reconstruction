@@ -52,3 +52,17 @@ results/assemblies/illumina/.complete: scripts/assemble_illumina.py environment.
 	@test -s results/assemblies/illumina/successful/params.txt
 	@touch $@
 	@echo "[OK] Illumina assembly completed and verified"
+
+# Illumina assembly evaluation with QUAST
+.PHONY: quast_illumina
+
+quast_illumina: results/quast/illumina/.complete
+
+results/quast/illumina/.complete: scripts/evaluate_illumina.py results/assemblies/illumina/.complete
+	$(PYTHON) scripts/evaluate_illumina.py
+	@test -s results/quast/illumina/report.txt
+	@test -s results/quast/illumina/report.tsv
+	@test -s results/quast/illumina/report.html
+	@test -s results/quast/illumina/quast.log
+	@touch $@
+	@echo "[OK] Illumina QUAST evaluation completed and verified"
