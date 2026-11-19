@@ -38,3 +38,17 @@ results/qc/illumina/.complete: scripts/quality_control.py environment.yml | down
 	@test -s results/qc/illumina/clean/illumina_2.clean_fastqc.zip
 	@touch $@
 	@echo "[OK] Illumina quality control completed and verified"
+
+# Illumina genome assembly
+.PHONY: assemble_illumina
+
+assemble_illumina: results/assemblies/illumina/.complete
+
+results/assemblies/illumina/.complete: scripts/assemble_illumina.py environment.yml results/qc/illumina/.complete
+	$(PYTHON) scripts/assemble_illumina.py
+	@test -s results/assemblies/illumina/successful/contigs.fasta
+	@test -s results/assemblies/illumina/successful/scaffolds.fasta
+	@test -s results/assemblies/illumina/successful/spades.log
+	@test -s results/assemblies/illumina/successful/params.txt
+	@touch $@
+	@echo "[OK] Illumina assembly completed and verified"
