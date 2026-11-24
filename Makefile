@@ -26,8 +26,17 @@ verify_downloads:
 .PHONY: qc_illumina
 
 qc_illumina: results/qc/illumina/.complete
+	@echo '[CHECK] qc_illumina outputs'
+	@test -s data/cleaned/illumina_1.clean.fastq.gz || { echo '[ERROR] Missing or empty: data/cleaned/illumina_1.clean.fastq.gz'; exit 1; }
+	@test -s data/cleaned/illumina_2.clean.fastq.gz || { echo '[ERROR] Missing or empty: data/cleaned/illumina_2.clean.fastq.gz'; exit 1; }
+	@test -s results/qc/illumina/fastp/fastp.json || { echo '[ERROR] Missing or empty: results/qc/illumina/fastp/fastp.json'; exit 1; }
+	@test -s results/qc/illumina/raw/illumina_1_fastqc.zip || { echo '[ERROR] Missing or empty: results/qc/illumina/raw/illumina_1_fastqc.zip'; exit 1; }
+	@test -s results/qc/illumina/raw/illumina_2_fastqc.zip || { echo '[ERROR] Missing or empty: results/qc/illumina/raw/illumina_2_fastqc.zip'; exit 1; }
+	@test -s results/qc/illumina/clean/illumina_1.clean_fastqc.zip || { echo '[ERROR] Missing or empty: results/qc/illumina/clean/illumina_1.clean_fastqc.zip'; exit 1; }
+	@test -s results/qc/illumina/clean/illumina_2.clean_fastqc.zip || { echo '[ERROR] Missing or empty: results/qc/illumina/clean/illumina_2.clean_fastqc.zip'; exit 1; }
+	@echo '[OK] qc_illumina outputs verified'
 
-results/qc/illumina/.complete: scripts/quality_control.py environment.yml | download
+results/qc/illumina/.complete: scripts/quality_control.py | environment.yml download
 	$(PYTHON) scripts/quality_control.py
 	@test -s data/cleaned/illumina_1.clean.fastq.gz
 	@test -s data/cleaned/illumina_2.clean.fastq.gz
@@ -43,8 +52,14 @@ results/qc/illumina/.complete: scripts/quality_control.py environment.yml | down
 .PHONY: assemble_illumina
 
 assemble_illumina: results/assemblies/illumina/.complete
+	@echo '[CHECK] assemble_illumina outputs'
+	@test -s results/assemblies/illumina/successful/contigs.fasta || { echo '[ERROR] Missing or empty: results/assemblies/illumina/successful/contigs.fasta'; exit 1; }
+	@test -s results/assemblies/illumina/successful/scaffolds.fasta || { echo '[ERROR] Missing or empty: results/assemblies/illumina/successful/scaffolds.fasta'; exit 1; }
+	@test -s results/assemblies/illumina/successful/spades.log || { echo '[ERROR] Missing or empty: results/assemblies/illumina/successful/spades.log'; exit 1; }
+	@test -s results/assemblies/illumina/successful/params.txt || { echo '[ERROR] Missing or empty: results/assemblies/illumina/successful/params.txt'; exit 1; }
+	@echo '[OK] assemble_illumina outputs verified'
 
-results/assemblies/illumina/.complete: scripts/assemble_illumina.py environment.yml results/qc/illumina/.complete
+results/assemblies/illumina/.complete: scripts/assemble_illumina.py results/qc/illumina/.complete | environment.yml
 	$(PYTHON) scripts/assemble_illumina.py
 	@test -s results/assemblies/illumina/successful/contigs.fasta
 	@test -s results/assemblies/illumina/successful/scaffolds.fasta
@@ -57,6 +72,12 @@ results/assemblies/illumina/.complete: scripts/assemble_illumina.py environment.
 .PHONY: quast_illumina
 
 quast_illumina: results/quast/illumina/.complete
+	@echo '[CHECK] quast_illumina outputs'
+	@test -s results/quast/illumina/report.txt || { echo '[ERROR] Missing or empty: results/quast/illumina/report.txt'; exit 1; }
+	@test -s results/quast/illumina/report.tsv || { echo '[ERROR] Missing or empty: results/quast/illumina/report.tsv'; exit 1; }
+	@test -s results/quast/illumina/report.html || { echo '[ERROR] Missing or empty: results/quast/illumina/report.html'; exit 1; }
+	@test -s results/quast/illumina/quast.log || { echo '[ERROR] Missing or empty: results/quast/illumina/quast.log'; exit 1; }
+	@echo '[OK] quast_illumina outputs verified'
 
 results/quast/illumina/.complete: scripts/evaluate_illumina.py results/assemblies/illumina/.complete
 	$(PYTHON) scripts/evaluate_illumina.py
@@ -71,11 +92,22 @@ results/quast/illumina/.complete: scripts/evaluate_illumina.py results/assemblie
 .PHONY: busco_illumina
 
 busco_illumina: results/busco/illumina/.complete
+	@echo '[CHECK] busco_illumina outputs'
+	@test -s results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.txt || { echo '[ERROR] Missing or empty: results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.txt'; exit 1; }
+	@test -s results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.json || { echo '[ERROR] Missing or empty: results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.json'; exit 1; }
+	@test -s results/busco/illumina/run_staphylococcus_odb12.2/short_summary.txt || { echo '[ERROR] Missing or empty: results/busco/illumina/run_staphylococcus_odb12.2/short_summary.txt'; exit 1; }
+	@echo '[OK] busco_illumina outputs verified'
 
-results/busco/illumina/.complete: scripts/busco_illumina.py environment.yml results/assemblies/illumina/.complete
+results/busco/illumina/.complete: scripts/busco_illumina.py results/assemblies/illumina/.complete | environment.yml
 	$(PYTHON) scripts/busco_illumina.py
 	@test -s results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.txt
 	@test -s results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.json
 	@test -s results/busco/illumina/run_staphylococcus_odb12.2/short_summary.txt
 	@touch $@
 	@echo "[OK] Illumina BUSCO evaluation completed and verified"
+
+# Complete Illumina pipeline
+.PHONY: illumina
+
+illumina: qc_illumina assemble_illumina quast_illumina busco_illumina
+	@echo "[OK] Complete Illumina pipeline verified"
