@@ -66,3 +66,16 @@ results/quast/illumina/.complete: scripts/evaluate_illumina.py results/assemblie
 	@test -s results/quast/illumina/quast.log
 	@touch $@
 	@echo "[OK] Illumina QUAST evaluation completed and verified"
+
+# Illumina assembly completeness with BUSCO
+.PHONY: busco_illumina
+
+busco_illumina: results/busco/illumina/.complete
+
+results/busco/illumina/.complete: scripts/busco_illumina.py environment.yml results/assemblies/illumina/.complete
+	$(PYTHON) scripts/busco_illumina.py
+	@test -s results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.txt
+	@test -s results/busco/illumina/short_summary.specific.staphylococcus_odb12.2.illumina.json
+	@test -s results/busco/illumina/run_staphylococcus_odb12.2/short_summary.txt
+	@touch $@
+	@echo "[OK] Illumina BUSCO evaluation completed and verified"
