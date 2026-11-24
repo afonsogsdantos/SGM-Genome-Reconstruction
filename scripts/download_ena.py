@@ -2,10 +2,11 @@
 
 import hashlib
 import json
+import subprocess
 import time
 from pathlib import Path
 from urllib.parse import urlencode
-from urllib.request import urlopen, urlretrieve
+from urllib.request import urlopen
 
 ACCESSIONS = {
     "SRR13745244": ["illumina_1.fastq.gz", "illumina_2.fastq.gz"],
@@ -66,35 +67,53 @@ def valid_file(path, expected_md5, expected_size):
     return calculate_md5(path) == expected_md5.lower()
 
 
+
 def download_file(url, destination, expected_md5, expected_size):
     if valid_file(destination, expected_md5, expected_size):
         print(f"[OK] Already verified: {destination}", flush=True)
         return
 
+
     temporary = destination.with_name(destination.name + ".part")
+    expected_size = int(expected_size)
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
+        print(
+            f"[DOWNLOAD] {destination.name} "
+            f"(attempt {attempt}/{MAX_ATTEMPTS})",
+            flush=True,
+        )
+
+        if temporary.exists() and temporary.stat().st_size > expected_size:
+            temporary.unlink()
+
+        command = [
+            "wget",
+            "--continue",
+            "--tries=8",
+            "--timeout=45",
+            "--waitretry=5",
+            "--no-verbose",
+            "--output-document", str(temporary),
+            url,
+        ]
+
         try:
-            temporary.unlink(missing_ok=True)
+            subprocess.run(command, check=True)
 
-            print(
-                f"[DOWNLOAD] {destination.name} "
-                f"(attempt {attempt}/{MAX_ATTEMPTS})",
-                flush=True,
-            )
-
-            urlretrieve(url, temporary)
+            if temporary.stat().st_size != expected_size:
+                raise RuntimeError("Incomplete file")
 
             if not valid_file(temporary, expected_md5, expected_size):
-                raise RuntimeError("Size or MD5 verification failed")
+                temporary.unlink(missing_ok=True)
+                raise RuntimeError("MD5 verification failed")
 
             temporary.replace(destination)
             print(f"[OK] Verified: {destination}", flush=True)
             return
 
-        except Exception as error:
-            print(f"[ERROR] {error}", flush=True)
-            temporary.unlink(missing_ok=True)
+        except (subprocess.CalledProcessError, OSError, RuntimeError) as error:
+            print(f"[WARNING] {error}", flush=True)
 
             if attempt == MAX_ATTEMPTS:
                 raise RuntimeError(
@@ -102,7 +121,6 @@ def download_file(url, destination, expected_md5, expected_size):
                 ) from error
 
             time.sleep(3 * attempt)
-
 
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
